@@ -1,0 +1,72 @@
+version: '3.8'
+
+volumes:
+  grafana_data: {}
+  prometheus_data: {}
+
+services:
+  pushgateway:
+    image: prom/pushgateway:latest
+    restart: unless-stopped
+    ports:
+      - ${PUSH_BIND:-127.0.0.1}:${PUSH_PORT:-9091}:9091
+    expose:
+      - 9091
+
+  prom-exporter:
+    image: pwojcikdev/nano-prom-exporter
+    restart: "unless-stopped"
+    network_mode: "host"
+    depends_on:
+      - pushgateway
+    command: --host 127.0.0.1 --port ${RPC_PORT:-7076} --push_gateway http://${PUSH_BIND:-127.0.0.1}:${PUSH_PORT:-9091} --interval ${INTERVAL:-3} --hostname ${NAME:-nano-node} --runid ${NAME:-nano-node}
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    user: root
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ${PROM_DATA:-prometheus_data}:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - ${PROM_BIND:-127.0.0.1}:${PROM_PORT:-9090}:9090
+    expose:
+      - 9090
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    user: "472"
+    depends_on:
+      - prometheus
+    ports:
+      - ${GRAFANA_BIND:-127.0.0.1}:${GRAFANA_PORT:-3000}:3000
+    expose:
+      - 3000
+    volumes:
+      - ${GRAFANA_DATA:-grafana_data}:/var/lib/grafana
+      - ./grafana/provisioning/:/etc/grafana/provisioning/
+      - ./dashboards:/etc/dashboards
+    environment:
+      - GF_AUTH_LOGIN_COOKIE_NAME=${NAME:-local}-grafana
+      - GF_RENDERING_SERVER_URL=http://grafana-renderer:8081/render
+      - GF_RENDERING_CALLBACK_URL=http://grafana:${GRAFANA_PORT:-3000}/
+
+  grafana-renderer:
+    image: grafana/grafana-image-renderer:latest
+    ports:
+      - 8081
+
+  pushgateway-cleaner:
+    image: pwojcikdev/prometheus-pushgateway-cleaner
+    restart: unless-stopped
+    command:
+      - '-address=http://pushgateway:9091'
+      - '-ttl=0h0m10s'
+      - '-debug=true'
