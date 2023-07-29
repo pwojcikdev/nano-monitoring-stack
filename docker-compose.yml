@@ -64,7 +64,7 @@ services:
     restart: unless-stopped
     command:
       - '-address=http://pushgateway:9091'
-      - '-ttl=0h0m10s'
+      - '-ttl=0h1m00s'
       - '-debug=true'
 
   ## (Optional)
