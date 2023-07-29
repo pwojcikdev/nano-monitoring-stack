@@ -19,7 +19,7 @@ services:
     network_mode: "host"
     depends_on:
       - pushgateway
-    command: --host 127.0.0.1 --port ${RPC_PORT:-7076} --push_gateway http://${PUSH_BIND:-127.0.0.1}:${PUSH_PORT:-9091} --interval ${INTERVAL:-3} --hostname ${NAME:-nano-node} --runid ${NAME:-nano-node}
+    command: --host ${RPC_HOST:-127.0.0.1} --port ${RPC_PORT:-7076} --push_gateway http://${PUSH_BIND:-127.0.0.1}:${PUSH_PORT:-9091} --interval ${INTERVAL:-3} --hostname ${NAME:-nano-node} --runid ${NAME:-nano-node}
 
   prometheus:
     image: prom/prometheus:latest
@@ -58,11 +58,7 @@ services:
       - GF_RENDERING_SERVER_URL=http://grafana-renderer:8081/render
       - GF_RENDERING_CALLBACK_URL=http://grafana:${GRAFANA_PORT:-3000}/
 
-  grafana-renderer:
-    image: grafana/grafana-image-renderer:latest
-    ports:
-      - 8081
-
+  ## (Optional)
   pushgateway-cleaner:
     image: pwojcikdev/prometheus-pushgateway-cleaner
     restart: unless-stopped
@@ -70,3 +66,9 @@ services:
       - '-address=http://pushgateway:9091'
       - '-ttl=0h0m10s'
       - '-debug=true'
+
+  ## (Optional)
+  # grafana-renderer:
+  #   image: grafana/grafana-image-renderer:latest
+  #   ports:
+  #     - 8081
